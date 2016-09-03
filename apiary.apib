@@ -3,9 +3,13 @@ HOST: http://polls.apiblueprint.org/
 
 # babe-frequency-cap-ms
 
+#### Purpose
+
 **Frequency Cap Microservice** helps another service such as **Push Notification Service** to limit push for __specific__ user by storing some temporary variable.
 
 This service **IS NOT** limited to only __Push Notification Service__ use, each of the caller to this service is called an **App** and can be identified by `appId` on each request.
+
+#### How It Works
 
 Each **App** should have a **Frequency Cap Strategy** and
 each of them consists of list of **Frequency Filter**.
@@ -16,101 +20,156 @@ The **Frequency Cap Strategy** on the other hand, will be defined in a `JSON` co
 
 Example of `freq-strategy.json` file would be:
 
-``` json
-[
-  {
-    "app": "push_notification",
-    "strategy": {
-      "filters": [
-        {
-          "class": "id.co.babe.frequencycap.filter.HourlyLimitFilter",
-          "config": {
-            "limit": 1
-          }
-        },
-        {
-          "class": "id.co.babe.frequencycap.filter.DailyLimitFilter",
-          "config": {
-            "limit": 4
-          }
-        },
-        {
-          "class": "id.co.babe.frequencycap.filter.MorningLimitFilter",
-          "config": {
-            "limit": 1
-          }
-        },
-        {
-          "class": "id.co.babe.frequencycap.filter.SleepingLimitFilter",
-          "config": {
-            "limit": 1
-          }
-        },
-        {
-          "class": "id.co.babe.frequencycap.filter.SameContentFilter",
-          "config": {
-            "limit": 1
-          }
-        }
-      ]
-    }
-  }
-]
 
-```
+    [
+      {
+        "app": "push_notification",
+        "strategy": {
+          "filters": [
+            {
+              "class": "id.co.babe.frequencycap.filter.HourlyLimitFilter",
+              "config": {
+                "limit": 1
+              }
+            },
+            {
+              "class": "id.co.babe.frequencycap.filter.DailyLimitFilter",
+              "config": {
+                "limit": 4
+              }
+            },
+            {
+              "class": "id.co.babe.frequencycap.filter.MorningLimitFilter",
+              "config": {
+                "limit": 1
+              }
+            },
+            {
+              "class": "id.co.babe.frequencycap.filter.SleepingLimitFilter",
+              "config": {
+                "limit": 1
+              }
+            },
+            {
+              "class": "id.co.babe.frequencycap.filter.SameContentFilter",
+              "config": {
+                "limit": 1
+              }
+            }
+          ]
+        }
+      }
+    ]
+
+
 
 `freq-strategy.json` JSON Schema
 
-``` json
-{
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "app": {
-        "type": "string"
-      },
-      "strategy": {
+
+    {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "array",
+      "items": {
         "type": "object",
         "properties": {
-          "filters": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "class": {
-                  "type": "string"
-                },
-                "config": {
+          "app": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "object",
+            "properties": {
+              "filters": {
+                "type": "array",
+                "items": {
                   "type": "object",
                   "properties": {
-                    "limit": {
-                      "type": "integer"
+                    "class": {
+                      "type": "string"
+                    },
+                    "config": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "limit"
+                      ]
                     }
                   },
                   "required": [
-                    "limit"
+                    "class",
+                    "config"
                   ]
                 }
-              },
-              "required": [
-                "class",
-                "config"
-              ]
-            }
+              }
+            },
+            "required": [
+              "filters"
+            ]
           }
         },
         "required": [
-          "filters"
+          "app",
+          "strategy"
         ]
       }
-    },
-    "required": [
-      "app",
-      "strategy"
-    ]
-  }
-}
-```
+    }
 
+#### Supported Filter
+ 
+##### HourlyLimitFilter
+
+This will limit every user per hour basis.
+`limit` field in the config will determine whether **user** are allowed to be given another content or not.
+Minimum allowed `limit` is 1.
+The implementation can be storing the state into `redis` and TTL is set every 0 minutes of every hour.
+
+| Key                       | Value                      |
+|---------------------------|----------------------------|
+| fl-daily-{appId}:{userId} | Numeric value as a counter |
+
+##### DailyLimitFilter
+
+This will limit every user per day basis.
+`limit` field in the config will determine whether **user** are allowed to be given another content or not.
+Minimum allowed `limit` is 1.
+The implementation can be storing the state into `redis` and TTL is set every midnight.
+
+| Key                        | Value                      |
+|----------------------------|----------------------------|
+| fl-hourly-{appId}:{userId} | Numeric value as a counter |
+
+##### MorningLimitFilter
+
+This will limit every user per morning time.
+`limit` field in the config will determine whether **user** are allowed to be given another content or not.
+Minimum allowed `limit` is 0.
+The implementation can be storing the state into `redis` will live during 07:00 - 12:00 Local Time.
+
+| Key                         | Value                      |
+|-----------------------------|----------------------------|
+| fl-morning-{appId}:{userId} | Numeric value as a counter |
+
+##### SleepingLimitFilter
+
+This will limit every user per sleeping time.
+`limit` field in the config will determine whether **user** are allowed to be given another content or not.
+Minimum allowed `limit` is 0.
+The implementation can be storing the state into `redis` will live during 00:00 - 06:59 Local Time.
+
+| Key                          | Value                      |
+|------------------------------|----------------------------|
+| fl-sleeping-{appId}:{userId} | Numeric value as a counter |
+
+##### SameContentFilter
+
+This will limit every user per content id.
+`limit` field in the config will determine whether **user** are allowed to be given another content or not.
+Minimum allowed `limit` is 1.
+The implementation can be storing the state into `redis` and TTL can be set to 14 days.
+
+| Key                                     | Value                      |
+|-----------------------------------------|----------------------------|
+| fl-content-{appId}-{contentId}:{userId} | Numeric value as a counter |
