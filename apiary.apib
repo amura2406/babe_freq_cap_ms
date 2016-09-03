@@ -178,3 +178,70 @@ The implementation can be storing the state into `redis` and TTL can be set to 1
 | Key                                       | Value                      |
 |-------------------------------------------|----------------------------|
 | `fl-content-{appId}-{contentId}:{userId}` | Numeric value as a counter |
+
+
+
+
+
+## Frequency Cap [/freq/cap/{appId}]
+
++ Parameters
+    + appId: "pushnotification" (string, required) - The App ID (caller)
+
+### Bulk Update Frequency Cap  [POST]
+
+Bulk update will check the supplied `uids` to the set of filters defined for specific `appId`. 
+
+If no previous state found, then create a new one for every filters.
+
+Else, check every state/counter to pass set of filters, If it pass then include it in the response array of `allowedIds` and every state should be incremented by 1. 
+ 
+
++ Request (application/json)
+    + Attributes
+        + uids: 123, 124, 125, 600, 781, 1001 (array[number], required) - User Indices to be updated.
+
++ Response 200 (application/json)
+    + Attributes
+        + allowedIds: 123, 600, 1001 (array[number]) - User Indices which are allowed.
+        
++ Response 400 (application/json)
+    Return when requres attributes requirement not met correctly.
+    
+    + Attributes (DefaultError400)
+        
++ Response 404 (application/json)
+    Return when app ID is not found
+    
+    + Attributes (DefaultError404)
+
++ Response 503 (application/json)
+    Return when server has internal error and can't continue fulfilling the request
+
+    + Attributes (DefaultError503)
+    
+    
+    
+    
+    
+# Data Structures
+
+## Error (object)
++ errCode (number) - Error Code
++ errMsg (string) - Error Message
+
+## DefaultError400 (Error)
++ errCode: `-1`
++ errMsg: Invalid Request
+
+## DefaultError401 (Error)
++ errCode: `-2`
++ errMsg: Authorization needed to access resource
+
+## DefaultError404 (Error)
++ errCode: `-5`
++ errMsg: Resource not found
+
+## DefaultError503 (Error)
++ errCode: `-10`
++ errMsg: Backend service is down
