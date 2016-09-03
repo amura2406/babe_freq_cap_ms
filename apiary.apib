@@ -3,78 +3,114 @@ HOST: http://polls.apiblueprint.org/
 
 # babe-frequency-cap-ms
 
-Polls is a simple API allowing consumers to view polls and vote in them.
+**Frequency Cap Microservice** helps another service such as **Push Notification Service** to limit push for __specific__ user by storing some temporary variable.
 
-## Questions Collection [/questions]
+This service **IS NOT** limited to only __Push Notification Service__ use, each of the caller to this service is called an **App** and can be identified by `appId` on each request.
 
-### List All Questions [GET]
+Each **App** should have a **Frequency Cap Strategy** and
+each of them consists of list of **Frequency Filter**.
 
-+ Response 200 (application/json)
+Each **Frequency Filter** should be defined in a single `class` of `IFrequencyCapFilter` implementation.
 
-        [
-            {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 2048
-                    }, {
-                        "choice": "Python",
-                        "votes": 1024
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 512
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 256
-                    }
-                ]
-            }
-        ]
+The **Frequency Cap Strategy** on the other hand, will be defined in a `JSON` config file.
 
-### Create a New Question [POST]
+Example of `freq-strategy.json` file would be:
 
-You may create your own question using this action. It takes a JSON
-object containing a question and a collection of answers in the
-form of choices.
-
-+ Request (application/json)
-
+``` json
+[
+  {
+    "app": "push_notification",
+    "strategy": {
+      "filters": [
         {
-            "question": "Favourite programming language?",
-            "choices": [
-                "Swift",
-                "Python",
-                "Objective-C",
-                "Ruby"
-            ]
+          "class": "id.co.babe.frequencycap.filter.HourlyLimitFilter",
+          "config": {
+            "limit": 1
+          }
+        },
+        {
+          "class": "id.co.babe.frequencycap.filter.DailyLimitFilter",
+          "config": {
+            "limit": 4
+          }
+        },
+        {
+          "class": "id.co.babe.frequencycap.filter.MorningLimitFilter",
+          "config": {
+            "limit": 1
+          }
+        },
+        {
+          "class": "id.co.babe.frequencycap.filter.SleepingLimitFilter",
+          "config": {
+            "limit": 1
+          }
+        },
+        {
+          "class": "id.co.babe.frequencycap.filter.SameContentFilter",
+          "config": {
+            "limit": 1
+          }
         }
+      ]
+    }
+  }
+]
 
-+ Response 201 (application/json)
+```
 
-    + Headers
+`freq-strategy.json` JSON Schema
 
-            Location: /questions/2
-
-    + Body
-
-            {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 0
-                    }, {
-                        "choice": "Python",
-                        "votes": 0
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 0
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 0
+``` json
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "app": {
+        "type": "string"
+      },
+      "strategy": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "class": {
+                  "type": "string"
+                },
+                "config": {
+                  "type": "object",
+                  "properties": {
+                    "limit": {
+                      "type": "integer"
                     }
-                ]
+                  },
+                  "required": [
+                    "limit"
+                  ]
+                }
+              },
+              "required": [
+                "class",
+                "config"
+              ]
             }
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      }
+    },
+    "required": [
+      "app",
+      "strategy"
+    ]
+  }
+}
+```
+
