@@ -183,10 +183,11 @@ The implementation can be storing the state into `redis` and TTL can be set to 1
 
 
 
-## Frequency Cap [/{appId}]
+## Frequency Cap [/{appId}/{contentId}]
 
 + Parameters
-    + appId: "pushnotification" (string, required) - The App ID (caller)
+    + appId: "pushnotification" (string, required) - The App ID (caller).
+    + contentId: 1001 (string, required) - The content ID (such as: article ID) of the request.
 
 ### Bulk Update Frequency Cap  [POST]
 
